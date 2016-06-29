@@ -1,0 +1,176 @@
+---
+title: 'Data Vis II: GGplot Workshop'
+author: "Julian Wills"
+date: "June 29, 2016"
+output:
+  github_document:
+    dev: 'CairoPNG'
+    toc: yes
+    fig_width: 8
+  html_document:
+    keep_md: yes
+    toc: yes
+    fig_width: 10
+---
+
+Thanks for attending today's workshop! Here's a document showcasing some of the plots you made today. Feel free to share  with coworkers, friends, and/or family. Happy plotting :)
+
+```{r setup, echo=F, include=F}
+# Setup: install packages, load functions, and load in data -----------------------------------
+require(MASS) || {install.packages("MASS"); require(MASS)}
+require(Hmisc) || {install.packages("Hmisc"); require(Hmisc)}
+require(dplyr) || {install.packages("dplyr"); require(dplyr)}
+require(ggplot2) || {install.packages("ggplot2"); require(ggplot2)}
+require(scales) || {install.packages("scales"); require(scales)}
+require(gridExtra) || {install.packages("gridExtra"); require(gridExtra)}
+require(tidyr) || {install.packages("tidyr"); require(tidyr)}
+require(Cairo) || {install.packages("Cairo"); require(Cairo)}
+
+#logistic regression model fit 
+bin_smooth <- function(...) {
+  geom_smooth(method = "glm", method.args = list(family = "binomial"), ...)
+}
+
+#poisson regression model fit 
+p_smooth <- function(...) {
+  geom_smooth(method = "glm", method.args = list(family = "poisson"), ...)
+}
+
+# Set working directory and load in data
+setwd("~/../GDrive/Misc/Summer Workshops/dataVis2/") #for those @ home, change this! rest of code will fail
+
+dOrlando <- tbl_df(read.csv("orlando_tweets.csv")) %>% 
+  mutate(MoralEmo_factor=as.factor(MoralEmo_cnt))
+
+old <- theme_set(theme_light(base_size = 13)) #change default theme and font size
+
+```
+
+#Univariate Plots
+
+***
+
+##Histogram
+
+```{r univ-1,fig.align="center",echo=F,include=T,eval=T,message=F,warning=F}
+
+ggplot(dOrlando) + 
+  geom_histogram(aes(x = src_ideo),bins=40,fill="grey",color="black") + 
+  xlab("Ideology of Original Tweet Author") + 
+  ylab("Frequency") + 
+  ggtitle("Distribution of Orlando Shooting Tweet Authors' Ideology")
+
+
+
+```
+
+##Density Plots
+
+```{r univ-2,fig.align="center",echo=F,include=T,eval=T,message=F,warning=F}
+
+ggplot(dOrlando) + 
+  geom_density(aes(x = src_ideo),fill="grey",color="black") + 
+  xlab("Ideology of Original Tweet Author") + 
+  ylab("Density") + 
+  ggtitle("Distribution of Orlando Shooting Tweet Authors' Ideology")
+
+# How is the author's ideology related to whether the tweet is shared across the spectrum?
+ggplot(dOrlando) +
+  geom_density(aes(x=src_ideo,fill=crossTalk),color="black",alpha=.5) #tune alpha
+
+# How is the retweeters' ideology related to the tweet author's political affiliation?
+ggplot(dOrlando) +
+  geom_density(aes(x=rt_ideo_mean,fill=party),color="black",alpha=.5) +
+  scale_fill_manual(values=c("Navy","Firebrick3"))
+
+```
+
+##Violin Plots
+
+```{r univ-3,fig.align="center",echo=F,include=T,eval=T,message=F,warning=F}
+
+# Create violin plots split by frequency of moral-emotional content
+dOrlando %>% filter(MoralEmo_cnt<5) %>% 
+  ggplot() +
+  geom_violin(aes(x=MoralEmo_factor,y=src_ideo,fill=MoralEmo_factor),draw_quantiles = c(.25,.5,.75))
+
+```
+
+#Bivariate Plots
+
+***
+
+##Heatmap
+
+```{r biv-1,fig.align="center",echo=F,include=T,eval=T,message=F,warning=F}
+
+# Create heatmap to better visualize bivariate density
+ggplot(dOrlando,aes(x=src_ideo,y=rt_ideo_mean)) +
+  geom_bin2d()
+
+```
+
+##Smoothing
+
+```{r biv-2,fig.align="center",echo=F,include=T,eval=T,message=F,warning=F}
+
+ggplot(dOrlando,aes(x=src_ideo,y=isViral)) +
+  geom_smooth(aes(color=crossTalk))
+
+```
+
+#Bonus
+
+***
+
+##Multiple DVs
+
+```{r bonus-1,fig.align="center",echo=F,include=T,eval=T,message=F,warning=F}
+
+dOrlando_MoralEmo <- gather(dOrlando,Dictionary,WordRatio,Emotion:MoralNeg)
+dOrlando_MFT <- gather(dOrlando,Dictionary,WordRatio,Harm:Purity)
+dOrlando_NegEmo <- gather(dOrlando,Dictionary,WordRatio,Guilt:Sad)
+
+ggplot(dOrlando_MFT,aes(WordRatio,rt_count,color=Dictionary)) + 
+  p_smooth(se=F) + 
+  facet_wrap(~party,scales="free") +
+  ylab("Retweet rt_count") + xlab("Ratio of Words in Tweet") + 
+  ggtitle("Orlando Tweet Virality w.r.t. \n Moral Foundations & Political Party")
+
+```
+
+
+```{r bonus-2,fig.align="center",echo=F,include=T,eval=T,message=F,warning=F,fig.height=2}
+
+old <- theme_set(theme_light(base_size = 9)) 
+
+P <- list() #create empty list object called 'P'. We will use it to store ggplots shortly. 
+p1 <- ggplot(dOrlando_MoralEmo,aes(WordRatio,rt_count,color=Dictionary)) +
+  p_smooth(se=F) + coord_cartesian(ylim=c(2,13)) +
+  ylab("Retweet rt_count") + xlab("Ratio of Words in Tweet") + ggtitle("Moral vs. Emotion")
+
+p2 <-ggplot(dOrlando_MFT,aes(WordRatio,rt_count,color=Dictionary)) +
+  p_smooth(se=F) + coord_cartesian(ylim=c(2,13)) +
+  ylab("Retweet rt_count") + xlab("Ratio of Words in Tweet") + ggtitle("Moral Foundations")
+
+p3 <-ggplot(dOrlando_NegEmo,aes(WordRatio,rt_count,color=Dictionary)) + 
+  p_smooth(se=F) + coord_cartesian(ylim=c(2,13)) +
+  ylab("Retweet rt_count") + xlab("Ratio of Words in Tweet") + ggtitle("Negative Emotions")
+
+P <- c(list(p1),list(p2),list(p3)) #cast ggplot objects to lists and append to 'P'
+
+do.call(grid.arrange, c(P, nrow = 1))
+```
+
+##Custom Functions
+
+```{r bonus-3,fig.align="center",echo=F,include=T,eval=T,message=F,warning=F}
+
+dOrlando_top1k <- slice(dOrlando,1:1000)
+
+source("helpFunc.R") #loads in helper functions from file
+scattergrid(dOrlando_top1k,"src_ideo",method="lm",se=T,alpha=.3)
+
+```
+
+
