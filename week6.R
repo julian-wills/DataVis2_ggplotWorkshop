@@ -2,7 +2,6 @@
 # Author/Instructor: Julian Wills
 # Date: 7/11/2016
 
-
 # Setup: install packages, load functions, and load in data -----------------------------------
 require(MASS) || {install.packages("MASS"); require(MASS)}
 require(dplyr) || {install.packages("dplyr"); require(dplyr)}
@@ -62,7 +61,7 @@ dLong2 <- rename(dLong2,Offer=Cooperate)
 
 # Use 'mutate' to transform existing variables or compute new ones
 dLong2 <- mutate(dLong2,LogRT=log(RT)) #Log-transform reaction time
-dLong2 <- mutate(dLong2,Missed=ifelse(RT==0,1,0)) #Flag missed trials w/ '1', otherwise '0'
+dLong2 <- mutate(dLong2,Missed= ifelse(RT==0,1,0) ) #Flag missed trials w/ '1', otherwise '0'
 dLong2 <- mutate(dLong2,Offer_f=ifelse(Offer==8,"Cooperate","Free-Ride")) #Create string/factor
 
 # Alternatively, this can be done in one fell swoop:
@@ -85,10 +84,11 @@ View(dLong_check)
 ggplot(dLong2,aes(TrialID,LogRT,color=Offer_f)) + geom_smooth()
 ggplot(dLong2,aes(TrialSum,LogRT,color=Offer_f)) + geom_smooth()
 
+
 # Summarizing and grouping data  ---------------------------------------------
 
 # How many trials were missed overall? Use 'summarize' to compute statistics for variables.
-summarize(dLong2,Missed_grandSum=sum(Missed))
+summarize(dLong2,Missed_grandSum = sum(Missed))
 
 # What percentage of trials were missed overall?
 summarize(dLong2,
@@ -105,7 +105,7 @@ dSum_missed <- summarize(dLong_grp,
                          Recorded=100-Missed, #NOTE: Don't have to use sum(Missed) again.
                          Coop=sum(Offer/8)) #Number of trials cooperated
 
-# How do I get the mean and SE of my variables of interest?
+# How do I get the mean and SD of my variables of interest?
 summarize(dLong2,
           Offer_mean=mean(Offer),Offer_sd=sd(Offer),
           LogRT_mean=mean(LogRT),LogRT_sd=sd(LogRT))
@@ -116,8 +116,8 @@ dLong2 <- mutate(dLong2,LogRT=ifelse(Missed==1,NA,LogRT)) #Change '-Inf' to 'NA'
 
 # Now we need to include an additional argument to the mean() function to ignore NAs. 
 summarize(dLong2,
-          Offer_mean=mean(Offer),Offer_sd=sd(Offer),
-          LogRT_mean=mean(LogRT,na.rm=T),LogRT_sd=sd(LogRT,na.rm=T))
+          Offer_mean=mean(Offer), Offer_sd=sd(Offer),
+          LogRT_mean=mean(LogRT, na.rm=TRUE), LogRT_sd=sd(LogRT,na.rm=TRUE))
 
 # Sometimes it's a pain to write all of this out for each variable. 
 summarize_each(dLong2, funs(mean,sd), Offer,RT,NumGiv)
@@ -132,7 +132,7 @@ summary(lm(LogRT ~ Offer+NumGiv*TrialSum,data=dLong2_C)) #Centered data
 
 # Or using custom function that uses this same logic
 summary(lm(LogRT ~ Offer+NumGiv*TrialSum,
-           data=demean(dLong2,"LogRT"))) 
+           data= demean(dLong2,"LogRT") )) 
 
 
 # Filtering observations --------------------------------------------------
@@ -140,12 +140,12 @@ summary(lm(LogRT ~ Offer+NumGiv*TrialSum,
 # Next question: How many subjects missed at least 5% of all trials?
 
 # Use 'filter' to preserve subset of dataframe
-dSum_badSubs <- filter(dSum_missed,Missed>=5) # Look at 'Row x Col' header of dataframe
+dSum_badSubs <- filter(dSum_missed, Missed>=5) # Look at 'Row x Col' header of dataframe
 nrow(dSum_badSubs) # Non-interactive way of obtaining number
 
 # It is often very useful to filter on grouped data
 dLong_goodSubs <- filter(dLong_grp,sum(Missed)<5)
-filter(dLong2,sum(Missed)<5) # Notice what happens when we don't use grouped data 
+filter(dLong2, sum(Missed)<5) # Notice what happens when we don't use grouped data 
 
 # Which subjects missed the most trials?
 arrange(dSum_missed,Recorded) # Sort by Recorded trials (Fewest to Most)
@@ -155,10 +155,8 @@ library(ggrepel)
 ggplot(dSum_sort,aes(x=SubjID,y=Missed)) +
   geom_point() + #Not quite what we want
   geom_label_repel(aes(label=SubjID)) + #Labels all subjects (comment out or remove this)
-  # geom_label_repel(aes(label=SubjID),data=dSum_badSubs) + #Labels the 'bad' subjects only
+  # geom_label_repel(aes(label=SubjID), data=dSum_badSubs) + #Labels the 'bad' subjects only
   list() #This is a just a 'hack' so that ggplot still runs when there's a trailing '+'
-
-
 
 # Piping: putting it all together -----------------------------------------
 tbl_df(read.csv("PGGfMRI_rawEprime.csv")) %>% 
@@ -211,6 +209,10 @@ dLong %>%
 # On Mac, the keyboard shortcut is 'Cmd + Shft + M'. 
 # For the remainder of these tutorials, we will primarily be using the pipe. 
 
+dLong %>% 
+  mutate(.,Missed=ifelse(Offer.RT==0,1,0)) %>% 
+  filter(SubjID==30) %>% 
+  summarize( sum(Missed))
 
 # Grouped mutate/filter: ---------------------------------------
 
@@ -277,6 +279,7 @@ dLong_cln <- dLong %>% filter(!SubjID %in% dExclude$SubjID)
 
 # If we remove the '!', then it only preserves subjects we've excluded.
 dLong_excl <- dLong %>% filter(SubjID %in% dExclude$SubjID)
+
 
 # Joining and Merging Data --------------------------------------------
 
